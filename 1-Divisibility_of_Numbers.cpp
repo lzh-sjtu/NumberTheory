@@ -2,15 +2,29 @@
 #include<cmath>
 using namespace std;
 
-struct Res {
+struct EraRes {
 	long long *res;
 	long long len;
-	Res(long long *r,long long l):res(r),len(l) {}
+	EraRes(long long *r,long long l):res(r),len(l) {}
+};
+
+struct BezRes {
+	long long s,t,gcd;
+	BezRes(long long ss,long long tt,long long g):s(ss),t(tt),gcd(g) {}
+};
+
+struct FacRes
+{
+	int *base;
+	int *index;
+	int num;
 };
 
 bool IsPrime(const long long &);
-Res Eratoshenes(const long long &);
+EraRes Eratoshenes(const long long &);
 long long gcd(long long,long long);
+BezRes bezout(const long long &,const long long &);
+FacRes PrimeFactorization(long long); 
 
 class InputOutOfRange {
 	public:
@@ -30,7 +44,7 @@ int main() {
 	int choice;
 	do {
 		cout<<"\n\n########################################### 请选择以下功能（选择0退出程序） ###########################################\n"
-		    <<"1.素数判定     2.Eratoshenes素数筛选     3.Euclidean除法     4.两个整数的最大公因数和最小公倍数     5.互素判定"
+		    <<"1.素数判定     2.Eratoshenes素数筛选     3.Euclidean除法     4.两个整数的最大公因数和最小公倍数\n5.互素判定     6.贝祖算法实现            7.素因数分解"
 		    <<"\n请输入：";
 		cin>>choice;
 
@@ -53,7 +67,7 @@ int main() {
 					cout<<"\n#2# 请输入一个正整数n，计算小于等于n的所有素数:";
 					long long m;
 					cin>>m;
-					Res r = Eratoshenes(m);
+					EraRes r = Eratoshenes(m);
 					if(!r.res) {
 						cout<<"无素数";
 						continue;
@@ -116,10 +130,41 @@ int main() {
 					break;
 				}
 
+				case 6: {
+					cout<<"\n#6# 请输入正整数a、b，求得整数s、t使得(a,b) = sa+tb:\n";
+					long long a,b;
+					cout<<"a:";
+					cin>>a;
+					cout<<"b:";
+					cin>>b;
+					BezRes r = bezout(a,b);
+					cout<<"s = "<<r.s<<"\nt = "<<r.t<<"\n(a,b) = "<<r.gcd<<endl;
+					break;
+				}
+					
+				case 7: {
+					cout<<"\n#7# 请输入正整数n，计算n的素因数分解式:\n";
+					long long n;
+					cin>>n;
+					if(n == 1)
+					{
+						cout<<"1 = [1]";
+						continue;
+					}
+					FacRes r = PrimeFactorization(n);
+					cout<<n<<" = ";
+					if(r.index[0] == 1)	cout<<'['<<r.base[0]<<"]";
+					else cout<<'['<<r.base[0]<<"]^"<<r.index[0];
+					for(int i=1;i<r.num;i++)
+					if(r.index[i] == 1) cout<<" * ["<<r.base[i]<<"]";
+					else cout<<" * ["<<r.base[i]<<"]^"<<r.index[i];
+					break;
+				}
+				
+				}
+
 			}
 
-
-		}
 
 		catch(InputOutOfRange err) {
 			err.message();
@@ -141,9 +186,9 @@ bool IsPrime(const long long & n) {
 }
 
 // 函数2：Eratoshenes筛法
-Res Eratoshenes(const long long & n) {
+EraRes Eratoshenes(const long long & n) {
 	if(n <= 0 || n > 9223372036854775807) throw InputOutOfRange();
-	if(n == 1) return Res(NULL,0);
+	if(n == 1) return EraRes(NULL,0);
 
 	bool *sieve = new bool[n+1];
 	long long num = 0;
@@ -167,7 +212,7 @@ Res Eratoshenes(const long long & n) {
 	for(long long i=2; i<=n; i++)
 		if(sieve[i]) *(res+k++) = i;
 
-	return Res(res,num);
+	return EraRes(res,num);
 }
 
 // 函数3.辗转相除法求最大公因数
@@ -181,4 +226,75 @@ long long gcd(long long a,long long b) {
 		b = r;
 	} while(r != 0);
 	return a;
+}
+
+// 函数4.贝祖算法实现
+BezRes bezout(const long long &a,const long long &b) {
+	if(a <= 0 || b <= 0 || a > 9223372036854775807 || b > 9223372036854775807) throw InputOutOfRange();
+
+	int n = 0;
+	long long a1 = a;
+	long long b1 = b;
+	long long r1 = a1%b1;
+	while(r1 != 0) {
+		a1 = b1;
+		b1 = r1;
+		r1 = a1%b1;
+		n++;
+	}
+	n += 3;
+
+	long long *s,*t,*q,*r;
+	s = new long long[n];
+	t = new long long[n];
+	q = new long long[n];
+	r = new long long[n];
+	s[1] = t[2] = 1;
+	s[2] = t[1] = 0;
+	r[0] = a;
+	r[1] = b;
+
+	int j = 2;
+	while(j < n-1) {
+		q[j] = r[j-2]/r[j-1];
+		r[j] = r[j-2]%r[j-1];
+		s[j+1] = s[j-1] - s[j]*q[j];
+		t[j+1] = t[j-1] - t[j]*q[j];
+		j++;
+	}
+	return BezRes(s[n-1],t[n-1],r[n-2]);
+}
+
+// 函数5.素因数分解 
+FacRes PrimeFactorization(long long n)
+{
+	if(n <= 1) throw InputOutOfRange();
+	
+	EraRes er = Eratoshenes(int(sqrt(n)));
+	FacRes fr;
+	fr.base = new int[er.len+1];
+	fr.index = new int[er.len+1];
+	int k = 0;
+	for(int i=0;i<er.len;i++)
+	{
+		if(n%er.res[i] == 0) 
+		{
+			fr.base[k] = er.res[i];
+			fr.index[k] = 0;
+			while(n%er.res[i] == 0)
+			{
+				fr.index[k]++;
+				n /= er.res[i];
+			}
+			k++;
+		}
+	}
+	if(n != 1) 
+	{
+		fr.base[k] = n;
+		fr.index[k] = 1;
+		k++;
+	}
+	fr.num = k;
+	return fr;
 }
